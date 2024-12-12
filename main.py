@@ -1,6 +1,7 @@
 import sys
 
 import api
+import db
 import validation
 
 
@@ -15,9 +16,12 @@ def main():
         if codes[0] == []:
             raise
         code_list = api.ApiGetAndParse(date).get_required_currensies(codes[0])
-        print(code_list)
+        db.Inserter(date, code_list).insert_date()
+        db.Inserter(date, code_list).insert_rates()
+        db.Reader(date).read()
     except Exception as e:
         print(e)
+    sys.exit()
 
 
 if __name__ == '__main__':
