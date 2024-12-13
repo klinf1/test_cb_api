@@ -7,25 +7,32 @@ class BaseDb():
 
     def __init__(self):
         self._con = sqlite3.connect('data.db')
-        query = ('''CREATE TABLE if NOT EXISTS currency_orders
-                    (id INTEGER PRIMARY KEY,
-                    ondate TEXT)
-        ''')
-        with self._con:
-            self._con.execute(query)
-        query = ('''CREATE TABLE if NOT EXISTS currency_rates
-                    (order_id INTEGER,
-                    name TEXT NOT NULL,
-                    numeric_code TEXT NOT NULL,
-                    alphabetic_code TEXT NOT NULL,
-                    scale INT NOT NULL,
-                    rate TEXT NOT NULL,
-                    FOREIGN KEY (order_id)
-                        REFERENCES currency_order (id) ON DELETE CASCADE)
-        ''')
-        with self._con:
-            self._con.execute(query)
         self._cur = self._con.cursor()
+        query_orders = '''SELECT count(*) FROM sqlite_master
+                          WHERE type='table' AND name='currency_orders';'''
+        query_rates = '''SELECT count(*) FROM sqlite_master
+                         WHERE type='table' AND name='currency_rates';'''
+        with self._con:
+            (orders_exists,) = self._cur.execute(query_orders).fetchone()
+            (rates_exists,) = self._cur.execute(query_rates).fetchone()
+            if orders_exists == 0:
+                query = ('''CREATE TABLE currency_orders
+                            (id INTEGER PRIMARY KEY,
+                            ondate TEXT)
+                    ''')
+                self._cur.execute(query)
+            if rates_exists == 0:
+                query = ('''CREATE TABLE if NOT EXISTS currency_rates
+                            (order_id INTEGER,
+                            name TEXT NOT NULL,
+                            numeric_code TEXT NOT NULL,
+                            alphabetic_code TEXT NOT NULL,
+                            scale INT NOT NULL,
+                            rate TEXT NOT NULL,
+                            FOREIGN KEY (order_id)
+                            REFERENCES currency_order (id) ON DELETE CASCADE)
+                ''')
+                self._cur.execute(query)
 
     def close(self):
         self._con.close()
