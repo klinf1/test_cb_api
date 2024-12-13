@@ -1,4 +1,5 @@
 import requests
+import sqlite3
 
 
 class InputError(Exception):
@@ -37,4 +38,34 @@ class RequestError(Exception):
 
     def __str__(self):
         note = f'Отказ сервера. Код ответа: {self.response.status_code}'
+        return note
+
+
+class DbCreationError(sqlite3.OperationalError):
+    def __str__(self):
+        note = 'Ошибка создания таблиц в БД.'
+        return note
+
+
+class DbDateError(sqlite3.OperationalError):
+    def __str__(self):
+        note = 'Ошибка внесения даты в БД.'
+        return note
+
+
+class DbCheckError(sqlite3.OperationalError):
+    def __str__(self):
+        note = 'Ошибка проверки данных в БД.'
+        return note
+
+
+class DbRatesError(sqlite3.OperationalError):
+    def __str__(self):
+        note = 'Ошибка внесения курсов в БД.'
+        return note
+
+
+class DbReadError(sqlite3.OperationalError):
+    def __str__(self):
+        note = 'Ошибка чтения данных из БД.'
         return note
