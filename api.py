@@ -50,5 +50,5 @@ class ApiGetAndParse:
         )
         return rates_data
 
-    def get_required_currensies(self, codes: list[str]) -> list[dict]:
+    def get_required_currencies(self, codes: list[str]) -> list[dict]:
         return [item for item in self.parse_rates_data() if item.get('Vcode') in codes]
