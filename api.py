@@ -3,6 +3,7 @@ import requests
 import xmltodict
 
 from exceptions import RequestError
+import logs
 
 
 class ApiGetAndParse:
@@ -33,9 +34,21 @@ class ApiGetAndParse:
                 headers=self.__headers,
                 data=self.__body.format(self.date)
             )
+            logs.logger.info(
+                f'Получен ответ от сервера c кодом {response.status_code}'
+            )
         except requests.exceptions.RequestException:
+            note = 'Невозможно установить соединение с сервером.'
+            note += f' Код ответа: {response.status_code}'
+            logs.logger.error(note)
             raise RequestError(response)
-        return response.text
+        else:
+            if response.status_code != 200:
+                logs.logger.error(
+                    f'Отказ сервера. Код ответа: {response.status_code}'
+                )
+                raise RequestError(response)
+            return response.text
 
     def parse_rates_data(self) -> list[dict]:
         text = xmltodict.parse(self.get_rates_data())
@@ -52,6 +65,7 @@ class ApiGetAndParse:
         ).get(
             'ValuteCursOnDate'
         )
+        logs.logger.info('Ответ сервера расшифрован')
         return rates_data
 
     def get_required_currencies(self, codes: list[str]) -> list[dict] | bool:
@@ -61,7 +75,10 @@ class ApiGetAndParse:
         found_codes = [item.get('Vcode') for item in currency_list]
         not_found_list = [code for code in codes if code not in found_codes]
         if not_found_list != []:
-            print(f'Данные коды не являются кодами валют: {not_found_list}')
+            logs.logger.warning(
+                f'Данные коды не являются кодами валют: {not_found_list}'
+            )
         if currency_list == []:
+            logs.logger.warning('Заданы несуществующие коды валют.')
             return False
         return currency_list

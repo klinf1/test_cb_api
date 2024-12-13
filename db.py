@@ -7,6 +7,7 @@ from exceptions import (DbCheckError,
                         DbDateError,
                         DbRatesError,
                         DbReadError)
+import logs
 
 
 class BaseDb():
@@ -28,6 +29,7 @@ class BaseDb():
                                 ondate TEXT)
                         ''')
                     self._cur.execute(query)
+                    logs.logger.info('Создана таблица currency_orders')
                 if rates_exists == 0:
                     query = ('''CREATE TABLE if NOT EXISTS currency_rates
                                 (order_id INTEGER,
@@ -41,7 +43,9 @@ class BaseDb():
                                     ON DELETE CASCADE)
                     ''')
                     self._cur.execute(query)
-        except sqlite3.OperationalError:
+                    logs.logger.info('Создана таблица currency_rates')
+        except sqlite3.OperationalError as e:
+            logs.logger.error(f'Ошибка БД: создание таблиц {e}')
             raise DbCreationError
 
     def close(self):
@@ -63,10 +67,12 @@ class Inserter(BaseDb):
                 query = '''INSERT INTO currency_orders (ondate) VALUES (?)'''
                 self._cur.execute(query, (self.date,))
                 self._con.commit()
+                logs.logger.info(f'Дата {self.date} внесена в БД')
             else:
-                print('date exists')
+                logs.logger.info(f'Дата {self.date} уже присутствует в БД')
             self.close()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
+            logs.logger.error(f'Ошибка БД: внесение даты - {e}')
             raise DbDateError
 
     def check_existing_rates(self) -> list[dict]:
@@ -81,8 +87,17 @@ class Inserter(BaseDb):
             new_rates = [
                 i for i in self.items if i.get('Vcode') not in existing_rates
             ]
+            if existing_rates != []:
+                logs.logger.info(
+                    f'Курсы валют с кодами {existing_rates} уже находятся в БД'
+                )
+            if new_rates == []:
+                logs.logger.info('Не найдено новых данных для внесения')
             return new_rates
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
+            logs.logger.error(
+                f'Ошибка БД: проверка на наличие уже внесенных данных - {e}'
+            )
             raise DbCheckError
 
     def insert_rates(self):
@@ -100,18 +115,21 @@ class Inserter(BaseDb):
                     (SELECT id FROM currency_orders WHERE ondate=?),
                     ?,?,?,?,?)
                 '''
-            for item in to_insert:
-                self._cur.execute(query, (
-                    (self.date),
-                    item.get('Vname'),
-                    item.get('Vcode'),
-                    item.get('VchCode'),
-                    int(item.get('Vnom')),
-                    item.get('Vcurs')
-                ))
-            self._con.commit()
+            if to_insert != []:
+                for item in to_insert:
+                    self._cur.execute(query, (
+                        (self.date),
+                        item.get('Vname'),
+                        item.get('Vcode'),
+                        item.get('VchCode'),
+                        int(item.get('Vnom')),
+                        item.get('Vcurs')
+                    ))
+                self._con.commit()
+                logs.logger.info('Данные о запрошенных курсах внесены в БД')
             self.close()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
+            logs.logger.error(f'Ошибка БД: внесение курсов - {e}')
             raise DbRatesError
 
 
@@ -128,11 +146,11 @@ class Reader(BaseDb):
                         currency_rates.name,
                         currency_rates.scale,
                         currency_rates.rate
-                    FROM currency_rates
+                       FROM currency_rates
                            INNER JOIN currency_orders
                                ON currency_rates.order_id=currency_orders.id
                                 WHERE currency_orders.ondate=?
-                    ORDER BY currency_rates.name ASC'''
+                       ORDER BY currency_rates.name ASC'''
             self._cur.execute(query, (self.date,))
             table = prettytable.PrettyTable()
             table = prettytable.from_db_cursor(self._cur)
@@ -141,7 +159,9 @@ class Reader(BaseDb):
                                  'Валюта',
                                  'Номинал',
                                  'Курс']
+            logs.logger.info(f'Данные за {self.date} загружены из БД')
             print(table)
             self.close()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
+            logs.logger.error(f'Ошибка БД: чтение данных - {e}')
             raise DbReadError
