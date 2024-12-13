@@ -1,3 +1,6 @@
+import requests
+
+
 class InputError(Exception):
     def __str__(self):
         note = 'Не введены дата и/или список кодов.'
@@ -25,4 +28,13 @@ class AdditionalArgumentsError(Exception):
     def __str__(self):
         note = 'Список кодов содержит пробелы.'
         note += '\nПовторите запуск, указывая коды через запятую без пробелов'
+        return note
+
+
+class RequestError(Exception):
+    def __init__(self, response: requests.Response):
+        self.response = response
+
+    def __str__(self):
+        note = f'Отказ сервера. Код ответа: {self.response.status_code}'
         return note

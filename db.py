@@ -57,10 +57,9 @@ class Inserter(BaseDb):
                    AND currency_orders.ondate=?'''
         self._cur.execute(query, (self.date,))
         existing_rates = [rate for (rate,) in self._cur.fetchall()]
-        new_rates = []
-        for item in self.items:
-            if item.get('Vcode') not in existing_rates:
-                new_rates.append(item)
+        new_rates = [
+            i for i in self.items if i.get('Vcode') not in existing_rates
+        ]
         return new_rates
 
     def insert_rates(self):

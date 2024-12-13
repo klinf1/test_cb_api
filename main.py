@@ -11,9 +11,12 @@ def main():
         date = validation.validate_date(sys.argv[1])
         codes = validation.validate_codes(sys.argv[2:])
         if codes:
-            code_list = api.ApiGetAndParse(date).get_required_currencies(codes)
-            db.Inserter(date, code_list).insert_date()
-            db.Inserter(date, code_list).insert_rates()
+            code_list = api.ApiGetAndParse(date).get_required_currencies(
+                set(codes)
+            )
+            if code_list:
+                db.Inserter(date, code_list).insert_date()
+                db.Inserter(date, code_list).insert_rates()
         db.Reader(date).read()
     except Exception as e:
         print(e)

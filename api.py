@@ -1,7 +1,8 @@
 import datetime
-
 import requests
 import xmltodict
+
+from exceptions import RequestError
 
 
 class ApiGetAndParse:
@@ -26,11 +27,14 @@ class ApiGetAndParse:
     </soap12:Envelope>'''
 
     def get_rates_data(self) -> dict:
-        response = requests.post(
-            url=self.__url,
-            headers=self.__headers,
-            data=self.__body.format(self.date)
-        )
+        try:
+            response = requests.post(
+                url=self.__url,
+                headers=self.__headers,
+                data=self.__body.format(self.date)
+            )
+        except requests.exceptions.RequestException:
+            raise RequestError(response)
         return response.text
 
     def parse_rates_data(self) -> list[dict]:
@@ -50,5 +54,14 @@ class ApiGetAndParse:
         )
         return rates_data
 
-    def get_required_currencies(self, codes: list[str]) -> list[dict]:
-        return [item for item in self.parse_rates_data() if item.get('Vcode') in codes]
+    def get_required_currencies(self, codes: list[str]) -> list[dict] | bool:
+        currency_list = [
+            i for i in self.parse_rates_data() if i.get('Vcode') in codes
+        ]
+        found_codes = [item.get('Vcode') for item in currency_list]
+        not_found_list = [code for code in codes if code not in found_codes]
+        if not_found_list != []:
+            print(f'Данные коды не являются кодами валют: {not_found_list}')
+        if currency_list == []:
+            return False
+        return currency_list
