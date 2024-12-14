@@ -27,7 +27,7 @@ class ApiGetAndParse:
     </soap12:Body>
     </soap12:Envelope>'''
 
-    def get_rates_data(self) -> dict:
+    def get_rates_data(self) -> requests.Response:
         try:
             response = requests.post(
                 url=self.__url,
@@ -48,10 +48,10 @@ class ApiGetAndParse:
                     f'Отказ сервера. Код ответа: {response.status_code}'
                 )
                 raise RequestError(response)
-            return response.text
+            return response
 
     def parse_rates_data(self) -> list[dict]:
-        text = xmltodict.parse(self.get_rates_data())
+        text = xmltodict.parse(self.get_rates_data().text)
         rates_data = text.get(
             'soap:Envelope'
         ).get(

@@ -29,7 +29,7 @@ def get_test_inserter():
 @pytest.fixture(scope='function')
 def get_test_reader():
     with mock.patch.object(db.BaseDb, 'db_name', 'test.db'):
-        a = db.Reader(test_date)
+        a = db.Reader()
     yield a
     if os.path.exists('test.db'):
         a.close()
@@ -56,6 +56,6 @@ def test_read(get_test_inserter, get_test_reader):
     get_test_inserter.insert_date()
     get_test_inserter.insert_rates()
     get_test_inserter.close()
-    reader = get_test_reader.read()
+    reader = get_test_reader.read(test_date)
     result = reader.fetchone()
     assert result == (1, '12.12.2024', 'Австралийский доллар', 1, '65.8247')
