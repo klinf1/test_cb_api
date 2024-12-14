@@ -170,13 +170,16 @@ class Inserter(BaseDb):
                        WHERE currency_orders.id=currency_rates.order_id
                        AND currency_orders.ondate=?'''
             self._cur.execute(query, (self.date,))
-            existing_rates = [rate for (rate,) in self._cur.fetchall()]
+            old_rates = [rate for (rate,) in self._cur.fetchall()]
             new_rates = [
-                i for i in self.items if i.get('Vcode') not in existing_rates
+                i for i in self.items if i.get('Vcode') not in old_rates
             ]
-            if existing_rates != []:
+            if old_rates != []:
+                trimmed_rates = [
+                    i['Vcode'] for i in self.items if i['Vcode'] in old_rates
+                ]
                 logs.logger.info(
-                    f'Курсы валют с кодами {existing_rates} уже находятся в БД'
+                    f'Курсы валют с кодами {trimmed_rates} уже находятся в БД'
                 )
             if new_rates == []:
                 logs.logger.info('Не найдено новых данных для внесения')
