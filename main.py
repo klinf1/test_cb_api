@@ -17,7 +17,8 @@ def main():
             if code_list:
                 db.Inserter(date, code_list).insert_date()
                 db.Inserter(date, code_list).insert_rates()
-        db.Reader(date).read()
+        data = db.Reader().read(date)
+        db.Reader().print(data)
     except Exception as e:
         print(e)
 

@@ -11,9 +11,10 @@ import logs
 
 
 class BaseDb():
+    db_name = 'data.db'
 
     def __init__(self):
-        self._con = sqlite3.connect('data.db')
+        self._con = sqlite3.connect(self.db_name)
         self._cur = self._con.cursor()
         try:
             query_orders = '''SELECT count(*) FROM sqlite_master
@@ -58,7 +59,7 @@ class Inserter(BaseDb):
         self.date = date
         self.items = items
 
-    def insert_date(self):
+    def insert_date(self) -> None:
         try:
             query = '''SELECT COUNT(*) FROM currency_orders WHERE ondate=?'''
             self._cur.execute(query, (self.date,))
@@ -67,13 +68,16 @@ class Inserter(BaseDb):
                 query = '''INSERT INTO currency_orders (ondate) VALUES (?)'''
                 self._cur.execute(query, (self.date,))
                 self._con.commit()
+                done = True
                 logs.logger.info(f'Дата {self.date} внесена в БД')
             else:
+                done = False
                 logs.logger.info(f'Дата {self.date} уже присутствует в БД')
-            self.close()
         except sqlite3.OperationalError as e:
             logs.logger.error(f'Ошибка БД: внесение даты - {e}')
             raise DbDateError
+        else:
+            return done
 
     def check_existing_rates(self) -> list[dict]:
         try:
@@ -100,7 +104,7 @@ class Inserter(BaseDb):
             )
             raise DbCheckError
 
-    def insert_rates(self):
+    def insert_rates(self) -> None:
         try:
             to_insert = self.check_existing_rates()
             query = '''
@@ -115,6 +119,7 @@ class Inserter(BaseDb):
                     (SELECT id FROM currency_orders WHERE ondate=?),
                     ?,?,?,?,?)
                 '''
+            done = False
             if to_insert != []:
                 for item in to_insert:
                     self._cur.execute(query, (
@@ -126,19 +131,20 @@ class Inserter(BaseDb):
                         item.get('Vcurs')
                     ))
                 self._con.commit()
+                done = True
                 logs.logger.info('Данные о запрошенных курсах внесены в БД')
-            self.close()
         except sqlite3.OperationalError as e:
             logs.logger.error(f'Ошибка БД: внесение курсов - {e}')
             raise DbRatesError
+        else:
+            return done
 
 
 class Reader(BaseDb):
-    def __init__(self, date: str):
+    def __init__(self):
         super().__init__()
-        self.date = date
 
-    def read(self):
+    def read(self, date: str) -> None:
         try:
             query = '''SELECT
                         currency_rates.order_id,
@@ -151,17 +157,20 @@ class Reader(BaseDb):
                                ON currency_rates.order_id=currency_orders.id
                                 WHERE currency_orders.ondate=?
                        ORDER BY currency_rates.name ASC'''
-            self._cur.execute(query, (self.date,))
-            table = prettytable.PrettyTable()
-            table = prettytable.from_db_cursor(self._cur)
-            table.field_names = ['Номер распоряжения',
-                                 'Дата установки курса',
-                                 'Валюта',
-                                 'Номинал',
-                                 'Курс']
-            logs.logger.info(f'Данные за {self.date} загружены из БД')
-            print(table)
-            self.close()
+            data = self._cur.execute(query, (date,))
+            logs.logger.info(f'Данные за {date} загружены из БД')
+            return data
         except sqlite3.OperationalError as e:
             logs.logger.error(f'Ошибка БД: чтение данных - {e}')
             raise DbReadError
+
+    def print(self, to_print: sqlite3.Cursor):
+        table = prettytable.PrettyTable()
+        table = prettytable.from_db_cursor(to_print)
+        table.field_names = ['Номер распоряжения',
+                             'Дата установки курса',
+                             'Валюта',
+                             'Номинал',
+                             'Курс']
+        print(table)
+        self.close()
