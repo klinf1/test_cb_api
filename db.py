@@ -12,10 +12,44 @@ import logs
 
 
 class BaseDb:
-    db_name = 'data.db'
+    '''
+    Базовый класс для работы с базой данных.
+
+    При инициализации проверяет наличие таблиц currency_orders
+    и currency_rates в базе. Если таблицы отсутствуют, создает их.
+
+    Методы:
+        close
+    '''
+
+    __db_name = 'data.db'
 
     def __init__(self):
-        self._con = sqlite3.connect(self.db_name)
+        '''
+        Создает подлючение и курсор для работы с базой данных, проверяет
+        наличие и при необходимости создает таблицы.
+
+        Таблица currency_orders
+            Поля:
+                id - первичный ключ
+                ondate - дата запроса
+
+        Таблица currency_rates
+            Поля:
+                order_id - внешний ключ к currency_orders.id
+                name - наименование валюты - TEXT
+                numeric_code - числовой код валюты - TEXT
+                alphabetic_code - буквенный код валюты - TEXT
+                scale - номинал валюты - INT
+                rate - курс номинала валюты к рублю - TEXT
+            Все поля должны быть заполнены.
+
+        Исключения:
+            DbCreationError: вызывается, если не удалось создать
+            таблицы в базе данных.
+        '''
+
+        self._con = sqlite3.connect(self.__db_name)
         self._cur = self._con.cursor()
         try:
             query_orders = '''SELECT count(*) FROM sqlite_master
@@ -51,16 +85,47 @@ class BaseDb:
             raise DbCreationError
 
     def close(self):
+        '''Закрывает соединение с БД.'''
+
         self._con.close()
 
 
 class Inserter(BaseDb):
+    '''
+    Класс для внесения данных в БД.
+    Наследует от BaseDb.
+
+    Методы:
+        insert_date
+        check_existing_rates
+        insert_rates
+    '''
     def __init__(self, date: str, items: list[dict]):
+        '''
+        Аргументы:
+            date - дата, за которую получена информация.
+            items - данные о курсах валют.
+        '''
+
         super().__init__()
         self.date = date
         self.items = items
 
     def insert_date(self) -> None:
+        '''
+        Вносит дату в БД и логирует факт внесения.
+        Если запись с такой датой уже присутствует в БД, то
+        логирует это.
+
+        Возвращает:
+            True, если дата успешно внесена.
+            False, если такая дата уже присутствовала в БД.
+
+        Исключения:
+            DbDateError: вызывается, если произошла ошибка
+            БД.
+        '''
+
         try:
             query = '''SELECT COUNT(*) FROM currency_orders WHERE ondate=?'''
             self._cur.execute(query, (self.date,))
@@ -81,6 +146,23 @@ class Inserter(BaseDb):
             return done
 
     def check_existing_rates(self) -> list[dict]:
+        '''
+        Проверяет, присутствуют ли запрошенные данные в БД.
+
+        Логирует наличие среди запрошенных кодов те, что
+        уже находятся в БД.
+        Если новых данных для внесения нет, логирует это.
+
+        Возвращает:
+            Список словарей с данными, которых еще нет в БД
+            или пустой список, если все запрошенные данные уже
+            присутствуют в БД.
+
+        Исключения:
+            DbCheckError: вызывается, если произошла ошибка
+            БД.
+        '''
+
         try:
             query = '''SELECT currency_rates.numeric_code
                        FROM currency_rates
@@ -106,22 +188,33 @@ class Inserter(BaseDb):
             raise DbCheckError
 
     def insert_rates(self) -> None:
+        '''
+        Вносит данные запрошенных валют в БД и логирует это.
+
+        Возвращает:
+            True, если новые данные были внесены.
+            False, если в запросе не было новых валют.
+
+        Исключения:
+            DbRatesError: вызывается, если произошла ошибка БД.
+        '''
+
         try:
             to_insert = self.check_existing_rates()
-            query = '''
-                INSERT INTO currency_rates (
-                    order_id,
-                    name,
-                    numeric_code,
-                    alphabetic_code,
-                    scale,
-                    rate
-                ) VALUES (
-                    (SELECT id FROM currency_orders WHERE ondate=?),
-                    ?,?,?,?,?)
-                '''
             done = False
             if to_insert != []:
+                query = '''
+                    INSERT INTO currency_rates (
+                        order_id,
+                        name,
+                        numeric_code,
+                        alphabetic_code,
+                        scale,
+                        rate
+                    ) VALUES (
+                        (SELECT id FROM currency_orders WHERE ondate=?),
+                        ?,?,?,?,?)
+                    '''
                 for item in to_insert:
                     self._cur.execute(query, (
                         (self.date),
@@ -142,10 +235,36 @@ class Inserter(BaseDb):
 
 
 class Reader(BaseDb):
+    '''
+    Класс для чтения и печати данных из БД.
+    Наследует от BaseDb.
+
+    Методы:
+        read,
+        print.
+    '''
+
     def __init__(self):
         super().__init__()
 
-    def read(self, date: str) -> None:
+    def read(self, date: str) -> sqlite3.Cursor:
+        '''
+        Cчитывет данные из БД за запрошенную дату.
+
+        Получает поля currency_rates.order_id, currency_orders.ondate,
+        currency_rates.name, currency_rates.scale, currency_rates.rate
+        за запрошенную дату.
+
+        Аргументы:
+            date: дата, за которую необходимо получить данные.
+
+        Возвращает:
+            sqlite3.Cursor с данными.
+
+        Исключения:
+            DbReadError: вызывается при ошибке БД.
+        '''
+
         try:
             query = '''SELECT
                         currency_rates.order_id,
@@ -165,7 +284,14 @@ class Reader(BaseDb):
             logs.logger.error(f'Ошибка БД: чтение данных - {e}')
             raise DbReadError
 
-    def print(self, to_print: sqlite3.Cursor):
+    def print(self, to_print: sqlite3.Cursor) -> None:
+        '''
+        Выводит данные в sys.stdout в виде таблицы.
+
+        Аргументы:
+            курсор с данными для вывода.
+        '''
+
         table = prettytable.PrettyTable()
         table = prettytable.from_db_cursor(to_print)
         table.field_names = ['Номер распоряжения',
@@ -178,5 +304,7 @@ class Reader(BaseDb):
 
 @contextmanager
 def close_manager():
+    '''Менеджер контекста, закрывающий базу данных.'''
+
     yield
     BaseDb().close()

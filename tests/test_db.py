@@ -18,7 +18,7 @@ test_items = [{'Vname': 'Австралийский доллар',
 
 @pytest.fixture(scope='function')
 def get_test_inserter():
-    with mock.patch.object(db.BaseDb, 'db_name', 'test.db'):
+    with mock.patch.object(db.BaseDb, '__db_name', 'test.db'):
         a = db.Inserter(test_date, test_items)
     yield a
     if os.path.exists('test.db'):
@@ -28,7 +28,7 @@ def get_test_inserter():
 
 @pytest.fixture(scope='function')
 def get_test_reader():
-    with mock.patch.object(db.BaseDb, 'db_name', 'test.db'):
+    with mock.patch.object(db.BaseDb, '__db_name', 'test.db'):
         a = db.Reader()
     yield a
     if os.path.exists('test.db'):
