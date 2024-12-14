@@ -15,10 +15,12 @@ def main():
                 set(codes)
             )
             if code_list:
-                db.Inserter(date, code_list).insert_date()
-                db.Inserter(date, code_list).insert_rates()
-        data = db.Reader().read(date)
-        db.Reader().print(data)
+                with db.close_manager():
+                    db.Inserter(date, code_list).insert_date()
+                    db.Inserter(date, code_list).insert_rates()
+        with db.close_manager():
+            data = db.Reader().read(date)
+            db.Reader().print(data)
     except Exception as e:
         print(e)
 

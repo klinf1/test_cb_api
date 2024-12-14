@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 
 import prettytable
 
@@ -10,7 +11,7 @@ from exceptions import (DbCheckError,
 import logs
 
 
-class BaseDb():
+class BaseDb:
     db_name = 'data.db'
 
     def __init__(self):
@@ -173,4 +174,9 @@ class Reader(BaseDb):
                              'Номинал',
                              'Курс']
         print(table)
-        self.close()
+
+
+@contextmanager
+def close_manager():
+    yield
+    BaseDb().close()
