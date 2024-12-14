@@ -78,7 +78,7 @@ def validate_codes(input: list[str]) -> list[str] | bool:
         logs.logger.error(f'В списке кодов присутствуют пробелы: {input}')
         raise AdditionalArgumentsError
     code_list = input[0].split(',')
-    digits = re.compile('\D+')
+    digits = re.compile(r'\D+')
     bad_codes = [
         code for code in code_list if digits.findall(code) != [] or len(code)
         not in (2, 3)
