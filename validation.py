@@ -10,6 +10,18 @@ import logs
 
 
 def validate_input() -> bool:
+    '''
+    Проверяет факт ввода даты и кодов.
+    Логирует факт неправильного ввода.
+
+    Возвращает:
+        True, если аргументы введены.
+
+    Исключения:
+        InputError: вызывается, если не введены дата
+        и/или коды.
+    '''
+
     try:
         sys.argv[1]
         sys.argv[2]
@@ -20,6 +32,20 @@ def validate_input() -> bool:
 
 
 def validate_date(input: str) -> str:
+    '''
+    Проверяет правильность ввода даты.
+    Логирует факт неправильного ввода.
+
+    Возвращает:
+        введенную дату, если ее формат верен.
+
+    Исключения:
+        DateInputError: вызывается, если формат даты не
+            соответствует ДД.ММ.ГГГГ.
+        DateOutOfRangeError: вызывается, если введенная
+            дата больше текущей.
+    '''
+
     try:
         current_date = datetime.datetime.now()
         input_date = datetime.datetime.strptime(input, '%d.%m.%Y')
@@ -33,6 +59,21 @@ def validate_date(input: str) -> str:
 
 
 def validate_codes(input: list[str]) -> list[str] | bool:
+    '''
+    Проверяет правильность ввода кодов валют.
+    Логирует неправильно введенные коды.
+
+    Необходимый формат ввода кодов: дву- или трехзначные числа,
+    введенные через запятую без пробелов.
+
+    Возвращает:
+        Список кодов, соответствующих формату или False, если таких
+        в запросе нет.
+
+    Исключения:
+        AdditionalArgumentsError: вызывается, если в списке кодов есть пробелы.
+    '''
+
     if len(input) > 1:
         logs.logger.error(f'В списке кодов присутствуют пробелы: {input}')
         raise AdditionalArgumentsError
