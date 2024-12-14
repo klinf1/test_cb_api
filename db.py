@@ -22,7 +22,7 @@ class BaseDb:
         close
     '''
 
-    __db_name = 'data.db'
+    _db_name = 'data.db'
 
     def __init__(self):
         '''
@@ -49,7 +49,7 @@ class BaseDb:
             таблицы в базе данных.
         '''
 
-        self._con = sqlite3.connect(self.__db_name)
+        self._con = sqlite3.connect(self._db_name)
         self._cur = self._con.cursor()
         try:
             query_orders = '''SELECT count(*) FROM sqlite_master
