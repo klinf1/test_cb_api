@@ -178,9 +178,10 @@ class Inserter(BaseDb):
                 trimmed_rates = [
                     i['Vcode'] for i in self.items if i['Vcode'] in old_rates
                 ]
-                logs.logger.info(
-                    f'Курсы валют с кодами {trimmed_rates} уже находятся в БД'
-                )
+                if trimmed_rates != []:
+                    logs.logger.info(
+                        f'Курсы валют с кодами {trimmed_rates} уже есть в БД'
+                    )
             if new_rates == []:
                 logs.logger.info('Не найдено новых данных для внесения')
             return new_rates
